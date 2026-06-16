@@ -86,6 +86,7 @@ export default function AdminPage() {
         <h1 className='text-3xl font-bold border-b border-[#C5A059] pb-4 mb-4'>使者收件匣</h1>
         <div className="flex justify-center gap-6 text-sm">
           <button onClick={handleSignOut} className="text-[#8B5A2B] hover:text-[#5C4033] underline">[ 登出 ]</button>
+          <Link href="/admin/rest-passwd" className="text-[#8B5A2B] hover:text-[#5C4033] underline">[ 修改密碼 ]</Link>
           {isSuper && (
             <Link href="/admin/add-user" className="text-[#8B5A2B] hover:text-[#5C4033] underline font-bold">[ 新增使者帳號 ]</Link>
           )}
