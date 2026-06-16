@@ -1,31 +1,30 @@
-// app/actions/user.ts
 'use server'
 import { createClient } from '@supabase/supabase-js'
 
-// 使用 Service Role Key 才能進行管理操作
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY! 
-)
-
-export async function createAdminUserAction(email: string, password: string, isAdmin: boolean) {
-  // 1. 獲取當前呼叫者的 Session (注意：這裡的 createClient 應指向你的 server 版 client)
-  // 建議使用你專案 lib/supabase/server.ts 裡定義的 client 邏輯
-  const { data: { user } } = await supabaseAdmin.auth.getUser(); 
-
-  const isSuper = user?.app_metadata?.is_super_admin === true;
-  if (!isSuper) {
-    throw new Error("你沒有權限建立新的使者");
+export async function createAdminUserAction(email, password, isSuper) {
+  // 檢查環境變數是否存在
+  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    console.error("缺少環境變數");
+    return { error: { message: "伺服器配置錯誤" } };
   }
 
-  // 2. 根據需求判斷是否給予超級管理員權限
-  const app_metadata = isAdmin ? { is_super_admin: true } : {};
+  const supabaseAdmin = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL,
+    process.env.SUPABASE_SERVICE_ROLE_KEY
+  )
 
-  // 3. 建立使用者
-  return await supabaseAdmin.auth.admin.createUser({
-    email,
-    password,
-    app_metadata,
-    email_confirm: true,
-  });
+  try {
+    const { data, error } = await supabaseAdmin.auth.admin.createUser({
+      email,
+      password,
+      email_confirm: true,
+      app_metadata: { is_super_admin: isSuper }
+    })
+
+    if (error) return { error }
+    return { data }
+  } catch (err) {
+    console.error("Action Execution Error:", err);
+    return { error: { message: "伺服器內部錯誤" } };
+  }
 }

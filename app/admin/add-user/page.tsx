@@ -8,7 +8,7 @@ export default function AddUserPage() {
   const router = useRouter()
   const supabase = createClient()
   const [loading, setLoading] = useState(true)
-  
+
   // 表單狀態
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
