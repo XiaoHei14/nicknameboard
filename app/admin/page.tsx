@@ -2,6 +2,8 @@
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/client'
 import Link from 'next/link'
+import { toPng } from 'html-to-image'
+
 
 export default function AdminPage() {
   const [messages, setMessages] = useState<any[]>([])
@@ -11,13 +13,11 @@ export default function AdminPage() {
 
   useEffect(() => {
     async function init() {
-      // 1. 檢查權限 (透過 app_metadata)
       const { data: { user } } = await supabase.auth.getUser()
       if (user?.app_metadata?.is_super_admin === true) {
         setIsSuper(true)
       }
 
-      // 2. 獲取留言
       const { data, error } = await supabase
         .from('comments')
         .select('*')
@@ -51,55 +51,74 @@ export default function AdminPage() {
     }
   };
 
+    const handleDownload = async (id: string) => {
+    try {
+        const element = document.getElementById(`msg-${id}`);
+
+        if (!element) return;
+
+        const actions = element.querySelector('.card-actions') as HTMLElement;
+
+        if (actions) {
+        actions.style.display = 'none';
+        }
+
+        const dataUrl = await toPng(element, {
+        pixelRatio: 2,
+        backgroundColor: '#FDF6E3',
+        });
+
+        if (actions) {
+        actions.style.display = '';
+        }
+
+        const link = document.createElement('a');
+        link.download = `正義之聲_信件_${id}.png`;
+        link.href = dataUrl;
+        link.click();
+    } catch (e) {
+        console.error(e);
+    }
+    };
   return (
     <div className='min-h-screen bg-[#E5D3B3] p-10 font-serif text-[#5C4033]'>
       <div className="text-center mb-8">
-        <h1 className='text-3xl font-bold border-b border-[#C5A059] pb-4 mb-4'>
-          使者收件匣
-        </h1>
-        
-        {/* 操作選單 */}
+        <h1 className='text-3xl font-bold border-b border-[#C5A059] pb-4 mb-4'>使者收件匣</h1>
         <div className="flex justify-center gap-6 text-sm">
-          <button onClick={handleSignOut} className="text-[#8B5A2B] hover:text-[#5C4033] underline">
-            [ 登出 ]
-          </button>
-          
-          {/* 只有超級管理員顯示新增帳號連結 */}
+          <button onClick={handleSignOut} className="text-[#8B5A2B] hover:text-[#5C4033] underline">[ 登出 ]</button>
           {isSuper && (
-            <Link href="/admin/add-user" className="text-[#8B5A2B] hover:text-[#5C4033] underline font-bold">
-              [ 新增使者帳號 ]
-            </Link>
+            <Link href="/admin/add-user" className="text-[#8B5A2B] hover:text-[#5C4033] underline font-bold">[ 新增使者帳號 ]</Link>
           )}
         </div>
       </div>
 
       <div className='max-w-2xl mx-auto'>
         {isLoading ? (
-          <div className='text-center py-20'>
-            <p className='text-[#C5A059] italic animate-pulse'>拆信中...</p>
-          </div>
+          <div className='text-center py-20 italic text-[#C5A059]'>拆信中...</div>
         ) : messages.length === 0 ? (
           <div className='text-center py-20 border-2 border-dashed border-[#C5A059]/50 bg-[#FDF6E3]/50'>
             <p className='text-xl text-[#8B5A2B] italic mb-2'>目前尚無信件</p>
-            <p className='text-sm text-[#C5A059]'>靜候飛鴿傳書...</p>
           </div>
         ) : (
-          <div className='grid gap-6'>
+          <div className='grid gap-8'>
             {messages.map((msg) => (
-              <div key={msg.id} className='bg-[#FDF6E3] p-6 border-2 border-[#C5A059] shadow-md relative group'>
-                <button 
-                  onClick={() => handleDelete(msg.id)}
-                  className='absolute top-2 right-3 text-[#C5A059] hover:text-red-700 transition-colors'
-                  title="焚毀信件"
-                >
-                  ✕
-                </button>
+              <div 
+                key={msg.id} 
+                id={`msg-${msg.id}`}
+                className='bg-[#FDF6E3] p-8 border-[3px] border-[#C5A059] shadow-xl relative group'
+              >
+                {/* 裝飾圖示 */}
+                <div className="absolute top-3 left-3 text-[#C5A059] opacity-30">✦</div>
                 
-                <div className="absolute top-2 left-3 text-[#C5A059] opacity-50">✦</div>
+                {/* 管理動作區 */}
+                <div className="card-actions absolute top-2 right-3 flex gap-3 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <button onClick={() => handleDownload(msg.id)} className="text-[#C5A059] hover:text-[#5C4033] font-bold text-xs underline">存為卡片</button>
+                  <button onClick={() => handleDelete(msg.id)} className='text-[#C5A059] hover:text-red-700 font-bold text-xs'>✕ 焚毀</button>
+                </div>
                 
-                <p className='text-sm text-[#C5A059] italic mb-2 pl-4'>來自：{msg.nickname}</p>
-                <p className='leading-relaxed'>{msg.content}</p>
-                <p className='text-[10px] text-right mt-4 opacity-50'>
+                <p className='text-sm text-[#C5A059] italic mb-4 border-b border-[#C5A059]/30 pb-2 pl-6'>來自：{msg.nickname}</p>
+                <p className='leading-relaxed text-lg text-[#5C4033] whitespace-pre-wrap'>{msg.content}</p>
+                <p className='text-[10px] text-right mt-6 opacity-40'>
                   {new Date(msg.created_at).toLocaleString()}
                 </p>
               </div>
